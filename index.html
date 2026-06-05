@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>V1 Video Scope Builder</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="builder">
+        <header class="app-header">
+          <div>
+            <p class="eyebrow">2A internal tool</p>
+            <h1>V1 Video Scope Builder</h1>
+          </div>
+          <button class="copy-button" id="copyButton" type="button" aria-label="Copy generated scope">
+            Copy
+          </button>
+        </header>
+
+        <div class="workspace">
+          <form class="scope-form" id="scopeForm">
+            <fieldset>
+              <legend>Project path</legend>
+              <label for="projectPath">What type of video scope are you building?</label>
+              <select id="projectPath" name="projectPath">
+                <option value="brand-story">Brand &amp; story</option>
+                <option value="product-showcase">Product showcase</option>
+                <option value="customer-evidence">Customer evidence</option>
+                <option value="podcast">Podcast</option>
+                <option value="webinar">Webinar</option>
+                <option value="social-clips">Social clips</option>
+                <option value="gif">GIF</option>
+              </select>
+            </fieldset>
+
+            <fieldset>
+              <legend>Support level</legend>
+              <label for="tier">What level of support is expected?</label>
+              <select id="tier" name="tier">
+                <option value="simple">Simple</option>
+                <option value="standard" selected>Standard</option>
+                <option value="premium">Premium</option>
+                <option value="not-sure">Not sure</option>
+              </select>
+              <p class="hint" id="tierRecommendation"></p>
+            </fieldset>
+
+            <fieldset id="pathQuestions">
+              <legend>Guided questions</legend>
+            </fieldset>
+
+            <fieldset id="motionDurationGroup" class="hidden">
+              <legend>Supporting animation</legend>
+              <label for="motionDuration">How much supporting animation or motion graphics is included?</label>
+              <select id="motionDuration" name="motionDuration">
+                <option value="none">None</option>
+                <option value="up to 5 seconds">Up to 5 seconds</option>
+                <option value="up to 10 seconds">Up to 10 seconds</option>
+                <option value="up to 15 seconds">Up to 15 seconds</option>
+                <option value="up to 30 seconds">Up to 30 seconds</option>
+                <option value="up to 60 seconds">Up to 60 seconds</option>
+                <option value="custom">Custom</option>
+              </select>
+            </fieldset>
+
+            <fieldset>
+              <legend>Custom-scoping checks</legend>
+              <label for="liveCapture">Does this project require live capture or on-site filming?</label>
+              <select id="liveCapture" name="liveCapture">
+                <option value="no">No</option>
+                <option value="yes">Yes</option>
+                <option value="not-sure">Not sure</option>
+              </select>
+
+              <label for="descriptiveAudio">Is descriptive audio required?</label>
+              <select id="descriptiveAudio" name="descriptiveAudio">
+                <option value="no">No</option>
+                <option value="yes">Yes</option>
+                <option value="not-sure">Not sure</option>
+              </select>
+            </fieldset>
+
+            <aside class="flags" id="flags" aria-live="polite"></aside>
+          </form>
+
+          <section class="preview-panel" aria-label="Generated output preview">
+            <div class="preview-toolbar">
+              <h2>Generated output</h2>
+              <span id="copyStatus" role="status"></span>
+            </div>
+            <div id="output" class="markdown-preview"></div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
