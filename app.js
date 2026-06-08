@@ -683,6 +683,17 @@ function addMotionLanguage(base, perClip = false) {
   return `${base} - scope includes ${duration} of supporting graphics or animated elements${perClip ? " per clip" : ""}.`;
 }
 
+function getSocialMotionScopeText() {
+  const motionSupport = getSelectedText("motionSupport");
+  if (motionSupport === "Text on screen and captions") {
+    return "Add text on screen, captions, product UI, and/or supporting visual elements, as applicable";
+  }
+  if (motionSupport === "Moderate motion graphics") {
+    return "Add text on screen, captions, product UI, and/or scoped motion graphics support, as applicable";
+  }
+  return "Add text on screen, captions, product UI, and/or light motion graphics, as applicable";
+}
+
 function getPodcastReviewRounds(tier) {
   if (tier === "simple") return 1;
   return 2;
@@ -948,12 +959,13 @@ function buildScopeBullets(tier) {
   if (path === "social-clips") {
     bullets.push(`Develop social clip edit approach from ${getSelectedText("sourceMaterial").toLowerCase()}.`);
     bullets.push(`Edit social clips; review, revise, and finalize - scope includes up to ${defaults.editRounds} review rounds per clip package: V1, V2, and final.`);
-    bullets.push(addMotionLanguage("Add text on screen, captions, product UI, and/or light motion graphics, as applicable", true));
+    bullets.push(addMotionLanguage(getSocialMotionScopeText(), true));
     bullets.push("Add music and sound effects, as applicable, using licensed or client-approved tracks.");
   }
 
   if (path === "gif") {
-    bullets.push(`Create GIF assets using ${getSelectedText("gifSource").toLowerCase()}; review, revise, and finalize - scope includes up to ${defaults.animationRounds} review round(s).`);
+    const gifCreationLabel = getSelectedText("gifFormats") === "MP4 only" ? "Create short looping motion assets" : "Create GIF assets";
+    bullets.push(`${gifCreationLabel} using ${getSelectedText("gifSource").toLowerCase()}; review, revise, and finalize - scope includes up to ${defaults.animationRounds} review round(s).`);
     bullets.push("Optimize files for scoped delivery format and intended placement.");
   }
 
@@ -1202,7 +1214,7 @@ function buildAssumptions(tier) {
     }
 
     if (getValue("descriptiveAudio") === "not-sure" && hasWebinarVideoOutput()) {
-      webinarAssumptions.push("Client to confirm whether descriptive audio is required.");
+      webinarAssumptions.splice(2, 0, "Client to confirm whether descriptive audio is required before SOW finalization.");
     }
 
     webinarAssumptions.push("Additional cutdowns, formats, versions, or revisions may impact scope, timeline, or budget.");
@@ -1425,6 +1437,9 @@ function buildFlags() {
   }
   if (pathSelect.value === "webinar" && getSelectedText("webinarAccessibility") === "Full accessibility review/report") {
     messages.push("Full accessibility review/report should be reviewed with the video practice lead before the SOW is finalized.");
+  }
+  if (pathSelect.value === "webinar" && getValue("descriptiveAudio") === "not-sure" && hasWebinarVideoOutput()) {
+    messages.push("Descriptive audio requirements must be confirmed before the SOW is finalized.");
   }
   if (getSelectedText("productAssets") === "Not sure" || getSelectedText("uiAnimation") === "Not sure" || getSelectedText("participantFootage") === "Not sure" || getSelectedText("podcastGraphics") === "Not sure") {
     messages.push("One or more selected inputs should be reviewed before this scope is finalized.");
