@@ -116,6 +116,13 @@ const pathConfigs = {
         options: ["Client provides footage", "Remote recording support", "Not sure"],
       },
       {
+        id: "customerInterviewCount",
+        label: "Remote customer interviews, if remote recording is selected",
+        type: "number",
+        min: 1,
+        value: 2,
+      },
+      {
         id: "quoteSupport",
         label: "Quote and story support",
         type: "select",
@@ -364,6 +371,22 @@ function formatCount(value, singular, plural = `${singular}s`) {
   return `${value} ${count === 1 ? singular : plural}`;
 }
 
+function formatPodcastDraftLabels(countValue) {
+  const count = Math.max(1, Number(countValue) || 1);
+  if (count === 1) return "draft 1";
+  if (count === 2) return "draft 1 and final";
+  const draftLabels = Array.from({ length: count - 1 }, (_, index) => `draft ${index + 1}`);
+  return `${draftLabels.join(", ")}, and final`;
+}
+
+function formatVideoReviewScope(roundText) {
+  return Number(getValue("primaryVideoCount", 1)) === 1 ? roundText : `${roundText} per video`;
+}
+
+function formatApproximateLength(lengthText, countValue) {
+  return Number(countValue) === 1 ? `approximately ${lengthText}` : `approximately ${lengthText} each`;
+}
+
 function getDefaultCheckedOptions(question) {
   if (pathSelect.value === "brand-story" && question.id === "brandVisualApproach") {
     if (tierSelect.value === "premium") return ["Custom illustration", "Custom animation"];
@@ -437,9 +460,9 @@ function shouldRenderQuestion(question, previousState) {
   return true;
 }
 
-function renderQuestions() {
+function renderQuestions(resetState = false) {
   const config = pathConfigs[pathSelect.value];
-  const previousState = getQuestionState();
+  const previousState = resetState ? {} : getQuestionState();
   questionContainer.innerHTML = "<legend>Guided questions</legend>";
 
   config.questions.forEach((question) => {
@@ -614,9 +637,102 @@ function shouldShowMotionDuration() {
   return ["Light UI motion", "Moderate UI motion", "Not sure"].includes(getSelectedText("uiAnimation"));
 }
 
-function lineList(title, items) {
+function lineList(title, items, intro = "") {
   if (!items.length) return "";
-  return `${title}\n\n${items.map((item) => `- ${cleanBulletText(item)}`).join("\n")}`;
+  return [title, intro, items.map((item) => `- ${cleanBulletText(item)}`).join("\n")]
+    .filter((section) => section !== "")
+    .join("\n\n");
+}
+
+function formatSowSection(title, items, intro = "") {
+  return lineList(`## ${title}`, items, intro);
+}
+
+function shouldGroupVideoScopeByPhase(path) {
+  if (path === "podcast") return true;
+  if (path === "customer-evidence") return getSelectedText("participantFootage") === "Remote recording support";
+  if (path === "product-showcase") return getSelectedText("productAssets") === "2A captures product screens";
+  if (path === "webinar") return hasWebinarRecordingEdit() || hasWebinarCutdowns();
+  return false;
+}
+
+function getRecordingPhaseLabel(path) {
+  if (path === "podcast") return "Remote recording";
+  if (path === "customer-evidence") return "Remote customer interview recording";
+  if (path === "product-showcase") return "Product screen capture";
+  if (path === "webinar") return "Client-conducted webinar recording handoff";
+  return "Production / Recording";
+}
+
+function categorizeScopeBullet(path, bullet) {
+  const text = cleanBulletText(bullet).toLowerCase();
+
+  if (
+    (path === "podcast" && (text.includes("remote recording") || text.startsWith("capture audio"))) ||
+    (path === "customer-evidence" && (text.includes("schedule remote video capture") || text.includes("remote customer interview"))) ||
+    (path === "product-showcase" && text.includes("capture approved product screens")) ||
+    (path === "webinar" && (text.includes("client will provide the webinar recording") || text.includes("client will provide the final webinar recording")))
+  ) {
+    return "production";
+  }
+
+  if (
+    text.startsWith("edit ") ||
+    text.startsWith("using the approved") ||
+    text.startsWith("review video footage and map content") ||
+    text.startsWith("add ") ||
+    text.startsWith("animate ") ||
+    text.startsWith("create podcast thumbnail") ||
+    text.startsWith("create standardized podcast assets") ||
+    text.startsWith("create supporting animated") ||
+    text.startsWith("create social clips") ||
+    text.startsWith("create gif assets") ||
+    text.startsWith("create short looping motion assets") ||
+    text.startsWith("optimize files") ||
+    text.startsWith("complete audio mix") ||
+    text.startsWith("once final") ||
+    text.startsWith("incorporate recorded voiceover")
+  ) {
+    return "post";
+  }
+
+  return "pre";
+}
+
+function formatVideoScopeBulletsByPhase(path, bullets) {
+  if (!shouldGroupVideoScopeByPhase(path)) {
+    return bullets.map((bullet) => `- ${cleanBulletText(bullet)}`).join("\n");
+  }
+
+  const openingBullets = [];
+  const phaseBullets = {
+    pre: [],
+    production: [],
+    post: [],
+  };
+
+  bullets.forEach((bullet) => {
+    const cleaned = cleanBulletText(bullet);
+    if (globalOpeningScopeBullets.includes(cleaned)) {
+      if (!openingBullets.includes(cleaned)) openingBullets.push(cleaned);
+      return;
+    }
+    phaseBullets[categorizeScopeBullet(path, cleaned)].push(cleaned);
+  });
+
+  const sections = [...openingBullets.map((bullet) => `- ${bullet}`)];
+  const phaseLabels = [
+    ["pre", "Pre-production"],
+    ["production", getRecordingPhaseLabel(path)],
+    ["post", "Post-production"],
+  ];
+
+  phaseLabels.forEach(([key, label]) => {
+    if (!phaseBullets[key].length) return;
+    sections.push("", `**${label}**`, "", phaseBullets[key].map((bullet) => `- ${bullet}`).join("\n"));
+  });
+
+  return sections.join("\n");
 }
 
 function cleanBulletText(text) {
@@ -657,9 +773,9 @@ function renderMarkdown(markdown) {
       return;
     }
 
-    if (trimmed.startsWith("### ")) {
+    if (trimmed.startsWith("## ")) {
       flushList();
-      html.push(`<h3>${escapeHtml(trimmed.slice(4))}</h3>`);
+      html.push(`<h3>${escapeHtml(trimmed.replace(/^#+\s*/, ""))}</h3>`);
       return;
     }
 
@@ -669,6 +785,11 @@ function renderMarkdown(markdown) {
     }
 
     flushList();
+    if (/^\*\*.+\*\*$/.test(trimmed)) {
+      html.push(`<p><strong>${escapeHtml(trimmed.slice(2, -2))}</strong></p>`);
+      return;
+    }
+
     html.push(`<p>${escapeHtml(trimmed)}</p>`);
   });
 
@@ -689,9 +810,21 @@ function getSocialMotionScopeText() {
     return "Add text on screen, captions, product UI, and/or supporting visual elements, as applicable";
   }
   if (motionSupport === "Moderate motion graphics") {
-    return "Add text on screen, captions, product UI, and/or scoped motion graphics support, as applicable";
+    return "Add text on screen, captions, product UI, and/or moderate motion graphics, as applicable";
   }
   return "Add text on screen, captions, product UI, and/or light motion graphics, as applicable";
+}
+
+function syncSocialMotionDuration() {
+  if (pathSelect.value !== "social-clips") return;
+  const motionSupport = getSelectedText("motionSupport");
+  if (motionSupport === "Light motion graphics") {
+    motionDurationSelect.value = "up to 5 seconds";
+  } else if (motionSupport === "Moderate motion graphics") {
+    motionDurationSelect.value = "up to 15 seconds";
+  } else if (motionSupport === "Text on screen and captions") {
+    motionDurationSelect.value = "none";
+  }
 }
 
 function getPodcastReviewRounds(tier) {
@@ -704,22 +837,23 @@ function buildPodcastScopeBullets(tier) {
   const recordingSessions = getValue("podcastRecordingSessions", 1);
   const socialClips = Number(getValue("podcastSocialClips", 0));
   const isAudioOnly = getSelectedText("podcastFormat") === "Audio only";
+  const podcastDraftCount = getValue("podcastDrafts", 2);
   const bullets = [
     `Provide and/or review podcast intake materials - scope includes up to ${getValue("podcastIntakeMeetings", 1)} intake meeting(s) or review(s).`,
-    `Draft interview questions and talking points; review, revise, and finalize - scope includes up to ${getValue("podcastDrafts", 2)} drafts: draft 1 and final.`,
+    `Draft interview questions and talking points; review, revise, and finalize - scope includes up to ${formatCount(podcastDraftCount, "draft")}: ${formatPodcastDraftLabels(podcastDraftCount)}.`,
     `Host a prep meeting with podcast participants to review approved questions, talking points, and recording best practices - scope includes one ${getSelectedText("podcastPrepMinutes", "30 minutes")} prep call.`,
     `Schedule and conduct ${recordingSessions} remote recording session(s) using Riverside.fm.`,
     isAudioOnly ? "Capture audio recordings for inclusion in the final podcast." : "Capture audio and/or video footage for inclusion in the final podcast.",
-    `Edit recorded podcast episode(s); review, revise, and finalize - scope includes up to ${reviewRounds} review rounds: draft 1 and final.`,
+    `Edit recorded podcast episode(s); review, revise, and finalize - scope includes up to ${formatCount(reviewRounds, "review round")}: draft 1 and final.`,
   ];
 
-  if (getSelectedText("podcastGraphics") === "Podcast system setup") {
+  if (!isAudioOnly && getSelectedText("podcastGraphics") === "Podcast system setup") {
     bullets.push("Create standardized podcast assets, which may include intro/outro cards, thumbnail design, lower thirds package, intro/outro script, and intro/outro music recommendation.");
-  } else if (getSelectedText("podcastGraphics") === "Client-provided graphics package") {
+  } else if (!isAudioOnly && getSelectedText("podcastGraphics") === "Client-provided graphics package") {
     bullets.push("Add client-provided graphics package, as applicable, which may include intro cards, outro cards, transitions, lower thirds, and intro/outro music.");
   }
 
-  if (!isAudioOnly || socialClips > 0) {
+  if (!isAudioOnly) {
     bullets.push("Create podcast thumbnail after the final edit is approved.");
   }
 
@@ -730,7 +864,7 @@ function buildPodcastScopeBullets(tier) {
   bullets.push("Complete audio mix.");
 
   if (socialClips > 0) {
-    bullets.push(`Create social clips from recorded podcast episode(s); review, revise, and finalize - scope includes up to ${reviewRounds} review rounds: draft 1 and final.`);
+    bullets.push(`Create social clips from recorded podcast episode(s); review, revise, and finalize - scope includes up to ${formatCount(reviewRounds, "review round")}: draft 1 and final.`);
   }
 
   return bullets;
@@ -807,7 +941,7 @@ function buildBrandStoryScopeBullets(tier) {
     }
   }
 
-  bullets.push(`Edit video footage and assembled assets; review, revise, and finalize - scope includes up to ${editRounds} per video: V1, V2, and final.`);
+  bullets.push(`Edit video footage and assembled assets; review, revise, and finalize - scope includes up to ${formatVideoReviewScope(editRounds)}: V1, V2, and final.`);
   bullets.push("Add music and sound effects, as applicable, using licensed or client-approved tracks.");
   return bullets;
 }
@@ -819,22 +953,22 @@ function buildWebinarScopeBullets(tier) {
   const hasContentRewriteRedesign = hasWebinarDeckSupport() && deckStatus === "Yes, content rewrite + redesign is needed";
 
   if (hasWebinarSupport("Outline/chiclets")) {
-    bullets.push(`Draft webinar outline/chiclets; review, revise, and finalize - scope includes up to ${defaults.scriptRounds} draft round(s).`);
+    bullets.push(`Draft webinar outline/chiclets; review, revise, and finalize - scope includes up to ${formatCount(defaults.scriptRounds, "draft round")}.`);
   }
 
   if (hasWebinarSupport("Slide-by-slide content") && !hasContentRewriteRedesign) {
-    bullets.push(`Draft slide-by-slide webinar content; review, revise, and finalize - scope includes up to ${defaults.scriptRounds} content draft round(s).`);
+    bullets.push(`Draft slide-by-slide webinar content; review, revise, and finalize - scope includes up to ${formatCount(defaults.scriptRounds, "content draft round")}.`);
   }
 
   if (hasWebinarDeckSupport()) {
     if (deckStatus === "Yes, light cleanup is needed") {
-      bullets.push(`Clean up existing webinar deck using client-provided content and brand guidance; review, revise, and finalize - scope includes up to ${defaults.designRounds} design review round(s).`);
+      bullets.push(`Clean up existing webinar deck using client-provided content and brand guidance; review, revise, and finalize - scope includes up to ${formatCount(defaults.designRounds, "design review round")}.`);
     } else if (deckStatus === "Yes, redesign is needed") {
-      bullets.push(`Redesign existing webinar deck using client-provided content and brand guidance; review, revise, and finalize - scope includes up to ${defaults.designRounds} design review round(s).`);
+      bullets.push(`Redesign existing webinar deck using client-provided content and brand guidance; review, revise, and finalize - scope includes up to ${formatCount(defaults.designRounds, "design review round")}.`);
     } else if (deckStatus === "Yes, content rewrite + redesign is needed") {
-      bullets.push(`Rewrite slide-by-slide webinar content and redesign the existing deck using client-provided inputs and brand guidance; review, revise, and finalize - scope includes up to ${defaults.scriptRounds} content round(s) and ${defaults.designRounds} design review round(s).`);
+      bullets.push(`Rewrite slide-by-slide webinar content and redesign the existing deck using client-provided inputs and brand guidance; review, revise, and finalize - scope includes up to ${formatCount(defaults.scriptRounds, "content round")} and ${formatCount(defaults.designRounds, "design review round")}.`);
     } else {
-      bullets.push(`Design webinar slides using existing brand guidelines provided by the client and presentation best practices; review, revise, and finalize - scope includes up to ${defaults.designRounds} design review round(s).`);
+      bullets.push(`Design webinar slides using existing brand guidelines provided by the client and presentation best practices; review, revise, and finalize - scope includes up to ${formatCount(defaults.designRounds, "design review round")}.`);
     }
   }
 
@@ -844,7 +978,7 @@ function buildWebinarScopeBullets(tier) {
 
   if (hasWebinarRecordingEdit()) {
     bullets.push("Once the webinar has been conducted by the client, client will provide the webinar recording to 2A for editing.");
-    bullets.push(`Edit client-provided webinar recording for clarity, flow, and polish; review, revise, and finalize - scope includes up to ${defaults.editRounds} review rounds: V1, V2, and final.`);
+    bullets.push(`Edit client-provided webinar recording for clarity, flow, and polish; review, revise, and finalize - scope includes up to ${formatCount(defaults.editRounds, "review round")}: V1, V2, and final.`);
     bullets.push("Add music, sound effects, captions, and basic audio cleanup to the edited webinar recording, as applicable.");
   }
 
@@ -852,7 +986,7 @@ function buildWebinarScopeBullets(tier) {
     if (!hasWebinarRecordingEdit()) {
       bullets.push("Client will provide the final webinar recording to 2A as source material for post-event cutdowns.");
     }
-    bullets.push(`Create post-event cutdown(s) from the webinar recording; review, revise, and finalize - scope includes up to ${defaults.editRounds} review rounds.`);
+    bullets.push(`Create post-event cutdown(s) from the webinar recording; review, revise, and finalize - scope includes up to ${formatCount(defaults.editRounds, "review round")}.`);
     bullets.push("Add music, sound effects, captions, and light post-production polish to post-event cutdown(s), as applicable.");
   }
 
@@ -860,6 +994,67 @@ function buildWebinarScopeBullets(tier) {
     bullets.push("Confirm webinar support needs and draft scope language based on selected inputs.");
   }
 
+  return bullets;
+}
+
+function buildCustomerEvidenceScopeBullets(tier) {
+  const defaults = tierDefaults[tier];
+  const footage = getSelectedText("participantFootage");
+  const quoteSupport = getSelectedText("quoteSupport");
+  const hasSupportingGraphics = getValue("supportingGraphics");
+  const interviewCount = getValue("customerInterviewCount", 2);
+  const interviewLabel = formatCount(interviewCount, "remote customer interview");
+  const interviewDurationText = Number(interviewCount) === 1 ? "one hour" : "one hour each";
+  const editReviewScope = formatVideoReviewScope(formatCount(Math.max(3, defaults.editRounds), "draft"));
+  const bullets = [];
+
+  if (footage === "Client provides footage") {
+    if (quoteSupport === "2A shapes narrative") {
+      bullets.push("Meet with client team to discuss the customer story, target audience, approved proof points, and intended case study narrative.");
+      bullets.push("Review client-provided footage, transcripts, customer quotes, and supporting assets; shape selected moments into a case study content map - scope includes 1 review round: V1 and final.");
+    } else if (quoteSupport === "Client provides approved outline") {
+      bullets.push("Review the client-approved case study outline, source footage, transcripts, proof points, and customer quote direction.");
+      bullets.push("Map client-provided footage to the approved case study outline - scope includes 1 review round: V1 and final.");
+    } else {
+      bullets.push("Review client-approved footage, quotes, and edit direction for a light customer evidence edit.");
+      bullets.push("Create an edit map from approved source material - scope includes 1 review round: V1 and final.");
+    }
+
+    bullets.push(`Using the approved ${quoteSupport === "Light edit only" ? "edit map" : "content map"}, edit video footage; review, revise, and finalize - scope includes up to ${editReviewScope}: V1, V2, and final.`);
+
+    if (hasSupportingGraphics) {
+      bullets.push("Add branded elements provided by client, including bumpers, lower thirds, transitions, context slides, and background music.");
+    }
+
+    bullets.push("Once final, complete color grade, audio clean-up, and audio sweetening.");
+    return bullets;
+  }
+
+  if (footage === "Remote recording support") {
+    if (quoteSupport === "2A shapes narrative") {
+      bullets.push("Use client-provided customer background, approved proof points, and written case study inputs to craft a remote interview guide and video story direction - scope includes 3 drafts: V1, V2, and final.");
+    } else if (quoteSupport === "Client provides approved outline") {
+      bullets.push("Review and refine the client-provided case study outline, approved questions, and customer messaging into an edit-ready remote recording plan.");
+    } else {
+      bullets.push("Use the client-approved case study script, questions, and messaging to guide the remote recording and edit.");
+    }
+
+    bullets.push("Meet to review the approved interview plan and walk participants through the remote recording process - scope includes 1 meeting.");
+    bullets.push("Schedule remote video capture interviews using Riverside.fm.");
+    bullets.push(`Conduct ${interviewLabel} and capture footage for inclusion in the final video. Participants will be on camera for recording. 2A will walk participants through equipment setup and share best practices to improve lighting and on-camera presence - scope includes up to ${interviewLabel}, ${interviewDurationText}, captured over Riverside.fm.`);
+    bullets.push("Review video footage and map content to include in the video.");
+    bullets.push(`Edit video footage; review, revise, and finalize - scope includes up to ${editReviewScope}: V1, V2, and final.`);
+
+    if (hasSupportingGraphics) {
+      bullets.push("Add branded elements provided by client, including bumpers, lower thirds, transitions, context slides, and background music.");
+    }
+
+    bullets.push("Once final, complete color grade, audio clean-up, and audio sweetening.");
+    return bullets;
+  }
+
+  bullets.push("Confirm whether the customer evidence scope will use client-provided footage, remote recording support, or another source approach before production begins.");
+  bullets.push("Confirm available customer interview footage, participant availability, customer approval needs, and supporting assets before production begins.");
   return bullets;
 }
 
@@ -871,29 +1066,20 @@ function buildScopeBullets(tier) {
 
   if (path === "brand-story") {
     bullets.push(...buildBrandStoryScopeBullets(tier));
+  } else if (path === "customer-evidence") {
+    bullets.push(...buildCustomerEvidenceScopeBullets(tier));
   } else if (config.narrative) {
     const scriptRounds = formatCount(defaults.scriptRounds, "round");
     const designRounds = formatCount(defaults.designRounds, "review round");
     const storyboardRounds = formatCount(defaults.storyboardRounds, "round");
     const editRounds = formatCount(defaults.editRounds, "review round");
-    if (path === "customer-evidence") {
-      const quoteSupport = getSelectedText("quoteSupport");
-      if (quoteSupport === "2A shapes narrative") {
-        bullets.push(`Shape the customer story, testimonial flow, outcomes, use cases, proof points, and customer quotes into a clear evidence narrative; review, revise, and finalize - scope includes up to ${scriptRounds} of revisions.`);
-      } else if (quoteSupport === "Client provides approved outline") {
-        bullets.push(`Review and refine the client-provided customer evidence outline, proof points, and quote direction; review, revise, and finalize - scope includes up to ${scriptRounds} of revisions.`);
-      } else {
-        bullets.push(`Lightly organize approved customer quotes, proof points, and source material into an edit-ready evidence flow; review, revise, and finalize - scope includes up to ${scriptRounds} of revisions.`);
-      }
+    const scriptText = getSelectedText("scriptSupport");
+    if (scriptText.includes("2A")) {
+      bullets.push(`Draft script or talking points; review, revise, and finalize - scope includes up to ${scriptRounds} of revisions.`);
+    } else if (scriptText.includes("Client")) {
+      bullets.push(`Review and refine client-provided script direction; review, revise, and finalize - scope includes up to ${scriptRounds} of revisions.`);
     } else {
-      const scriptText = getSelectedText("scriptSupport");
-      if (scriptText.includes("2A")) {
-        bullets.push(`Draft script or talking points; review, revise, and finalize - scope includes up to ${scriptRounds} of revisions.`);
-      } else if (scriptText.includes("Client")) {
-        bullets.push(`Review and refine client-provided script direction; review, revise, and finalize - scope includes up to ${scriptRounds} of revisions.`);
-      } else {
-        bullets.push(`Develop talking points and narrative flow; review, revise, and finalize - scope includes up to ${scriptRounds} of revisions.`);
-      }
+      bullets.push(`Develop talking points and narrative flow; review, revise, and finalize - scope includes up to ${scriptRounds} of revisions.`);
     }
 
     const visualPlanning = getSelectedText("visualPlanning");
@@ -915,29 +1101,15 @@ function buildScopeBullets(tier) {
       }
     }
 
-    if (path === "customer-evidence") {
-      const footage = getSelectedText("participantFootage");
-      if (footage === "Client provides footage") {
-        bullets.push("Edit client-provided customer interview footage, recordings, transcripts, and supporting assets into a customer evidence video.");
-      } else if (footage === "Remote recording support") {
-        bullets.push("Support remote customer interview recording preparation and capture, including basic setup guidance and recording coordination as scoped.");
-      } else {
-        bullets.push("Confirm available customer interview footage, participant availability, customer approval needs, and supporting assets before production begins.");
-      }
-      bullets.push("Highlight customer outcomes, use cases, proof points, approved quotes, and customer-approved brand, logo, or product references as provided.");
-    }
-
     if (path === "product-showcase" && getSelectedText("uiAnimation") === "Not sure") {
       bullets.push("Confirm product UI animation approach and supporting motion requirements before production begins.");
-    } else if (path === "customer-evidence" && getValue("supportingGraphics")) {
-      bullets.push(addMotionLanguage("Add supporting graphics, text callouts, customer quote treatments, logo treatments, and/or proof-point graphics as scoped"));
     } else if (getValue("supportingGraphics") || getSelectedText("uiAnimation") !== "None") {
       bullets.push(addMotionLanguage("Add supporting graphics, text on screen, product UI, stock footage, and/or branded elements, as applicable"));
     }
 
-    bullets.push(`Edit video footage and assembled assets; review, revise, and finalize - scope includes up to ${editRounds} per video: V1, V2, and final.`);
+    bullets.push(`Edit video footage and assembled assets; review, revise, and finalize - scope includes up to ${formatVideoReviewScope(editRounds)}: V1, V2, and final.`);
 
-    if (shouldShowMotionDuration() && motionDurationSelect.value !== "none" && !(path === "product-showcase" && getSelectedText("uiAnimation") === "Not sure") && path !== "customer-evidence") {
+    if (shouldShowMotionDuration() && motionDurationSelect.value !== "none" && !(path === "product-showcase" && getSelectedText("uiAnimation") === "Not sure")) {
       bullets.push(`Animate designs based on approved storyboards or visual direction; review, revise, and finalize - scope includes up to ${defaults.animationRounds} animation review round(s).`);
     }
 
@@ -965,15 +1137,13 @@ function buildScopeBullets(tier) {
 
   if (path === "gif") {
     const gifCreationLabel = getSelectedText("gifFormats") === "MP4 only" ? "Create short looping motion assets" : "Create GIF assets";
-    bullets.push(`${gifCreationLabel} using ${getSelectedText("gifSource").toLowerCase()}; review, revise, and finalize - scope includes up to ${defaults.animationRounds} review round(s).`);
+    bullets.push(`${gifCreationLabel} using ${getSelectedText("gifSource").toLowerCase()}; review, revise, and finalize - scope includes up to ${formatCount(defaults.animationRounds, "review round")}.`);
     bullets.push("Optimize files for scoped delivery format and intended placement.");
   }
 
   if (getValue("liveCapture") !== "no") {
     bullets.push("Prepare draft scope language based on currently known video requirements, excluding live capture or on-site filming unless separately scoped.");
   }
-
-  bullets.push("Package final files and deliver assets");
 
   return bullets.filter((bullet, index) => {
     const firstIndex = bullets.findIndex((candidate) => candidate === bullet);
@@ -986,9 +1156,10 @@ function buildDeliverables() {
   const deliverables = [];
 
   if (pathConfigs[path].narrative) {
-    deliverables.push(`${formatCount(getValue("primaryVideoCount", 1), "final video file")}, approximately ${getSelectedText("videoLength")} each`);
-    deliverables.push("Text/caption file(s)");
-    deliverables.push("Thumbnail(s)");
+    const videoCount = getValue("primaryVideoCount", 1);
+    deliverables.push(`${formatCount(videoCount, "final video file")}, ${formatApproximateLength(getSelectedText("videoLength"), videoCount)}`);
+    deliverables.push(path === "customer-evidence" ? "Text/caption file(s), if applicable" : "Text/caption file(s)");
+    deliverables.push(path === "customer-evidence" ? "Thumbnail(s), if applicable" : "Thumbnail(s)");
     deliverables.push("Scoped formats and aspect ratios: MP4, 16:9");
   }
 
@@ -1129,18 +1300,17 @@ function buildResponsibilities() {
     const responsibilities = [];
 
     if (footage === "Client provides footage") {
-      responsibilities.push("Provide approved customer interview recordings, transcripts, customer logos, product references, and supporting assets needed for the edit.");
-      responsibilities.push("Identify and coordinate customer participant(s), availability, and approval stakeholders.");
+      responsibilities.push("Provide existing relevant assets, approved source footage, transcripts, customer logos, product references, and branded elements needed for the edit.");
     } else if (footage === "Remote recording support") {
-      responsibilities.push("Coordinate customer participant availability, permissions, review cycles, and access to required remote recording sessions.");
-      responsibilities.push("Provide customer background, approved talking points, customer logos, product references, and supporting assets needed for the recording and edit.");
+      responsibilities.push("Identify participants, share contact information, and support scheduling as needed.");
+      responsibilities.push("Provide access to customer-approved messaging, written case study content, transcripts, customer logos, product references, and branded elements needed for the recording and edit.");
     } else {
       responsibilities.push("Confirm available customer interview footage, participant availability, customer approval needs, and supporting assets before production begins.");
-      responsibilities.push("Identify and coordinate customer participant(s), availability, and approval stakeholders.");
+      responsibilities.push("Identify participants, share contact information, and support scheduling as needed if remote recording is selected.");
     }
 
-    responsibilities.push("Confirm customer quotes, claims, product references, logo usage, and approval requirements before final delivery.");
-    responsibilities.push("Review consolidated drafts and provide feedback within the scoped review rounds.");
+    responsibilities.push("Provide V1 notes including graphics placement and technical notes, V2 internal and customer notes, and final notes or approval on picture lock.");
+    responsibilities.push("Secure customer approvals, legal sign-off, release permissions, and participant permissions unless separately scoped.");
     return responsibilities;
   }
 
@@ -1292,37 +1462,22 @@ function buildAssumptions(tier) {
 
   if (path === "customer-evidence") {
     const footage = getSelectedText("participantFootage");
-    const quoteSupport = getSelectedText("quoteSupport");
     const customerAssumptions = [];
 
     if (footage === "Not sure") {
       customerAssumptions.push("Final scope assumes customer evidence source materials, participant availability, and approval requirements are confirmed before production begins.");
     } else if (footage === "Remote recording support") {
-      customerAssumptions.push("Participants will use their own computer, camera, microphone, and internet connection unless equipment kits are separately scoped.");
-      customerAssumptions.push("Recording quality may vary based on participant equipment, internet connection, and recording environment.");
+      customerAssumptions.push("Client will provide timely access to written case study content, transcripts, approved messaging, and source materials needed to support the recording and edit.");
+      customerAssumptions.push("Remote recordings will be conducted virtually using Riverside.fm or a similar remote recording platform.");
     } else {
-      customerAssumptions.push("Client-provided customer interview recordings and supporting assets are approved for use in the final deliverables.");
-    }
-
-    if (quoteSupport === "Client provides approved outline") {
-      customerAssumptions.push("Client-approved customer evidence outline and proof points will guide edit development.");
-    } else if (quoteSupport === "Light edit only") {
-      customerAssumptions.push("Approved customer quotes and source materials will guide the edit-led evidence flow.");
-    } else {
-      customerAssumptions.push("Approved customer story direction, proof points, and quotes will guide the evidence narrative.");
-    }
-
-    customerAssumptions.push("Client feedback will be consolidated before being shared with 2A.");
-
-    if (shouldShowMotionDuration() && motionDurationSelect.value !== "none" && motionDurationSelect.value !== "custom") {
-      customerAssumptions.push("Supporting graphics and animated elements are limited to the scoped duration listed above.");
+      customerAssumptions.push("Client will provide timely access to source footage, transcripts, approved messaging, and source materials needed to support the edit.");
     }
 
     if (getValue("descriptiveAudio") === "not-sure" && supportsDescriptiveAudio(path)) {
-      customerAssumptions.push("Client to confirm whether descriptive audio is required.");
+      customerAssumptions.push("Client to confirm whether descriptive audio is required before the SOW is finalized.");
     }
 
-    customerAssumptions.push("Additional participants, approval cycles, formats, versions, or revisions may impact scope, timeline, or budget.");
+    customerAssumptions.push("Client will consolidate stakeholder and customer feedback before each review round.");
     return customerAssumptions.slice(0, tierDefaults[tier].assumptionLimit);
   }
 
@@ -1369,6 +1524,18 @@ function buildExclusions(tier) {
     return exclusions.slice(0, tierDefaults[tier].exclusionLimit);
   }
 
+  if (path === "customer-evidence") {
+    return [
+      "Live capture or on-site filming unless custom scoped",
+      "Travel",
+      "Securing legal sign-off, participant releases, or customer approvals unless separately scoped",
+      "Publishing or promotion strategy",
+      "Purchased stock footage, music, voice talent, or third-party assets unless scoped",
+      "Custom illustration or custom animation unless selected or custom scoped",
+      "Additional review rounds, formats, aspect ratios, or derivative assets not listed in deliverables",
+    ].slice(0, tierDefaults[tier].exclusionLimit);
+  }
+
   const exclusions = [
     "Live capture or on-site filming",
     "Production crew, travel, permits, and location coordination",
@@ -1405,12 +1572,6 @@ function buildExclusions(tier) {
     exclusions.push("Custom music composition or advanced sound design, unless separately scoped");
   }
 
-  if (path === "customer-evidence") {
-    exclusions.push("Talent sourcing");
-    exclusions.push("Legal release management");
-    exclusions.push("External camera or microphone kits");
-  }
-
   if (path === "podcast") {
     exclusions.push("In-person recording");
     exclusions.push("Travel");
@@ -1432,6 +1593,9 @@ function buildFlags() {
   if (getValue("liveCapture") !== "no") {
     messages.push("This project requires custom scoping with the video practice lead. V1 of the scope builder does not support live capture or on-site filming.");
   }
+  if (pathSelect.value === "podcast" && getSelectedText("podcastFormat") === "Audio only" && getSelectedText("podcastGraphics") !== "None") {
+    messages.push("Podcast graphics package selections do not apply to audio-only podcast scopes.");
+  }
   if (motionDurationSelect.value === "custom" && shouldShowMotionDuration()) {
     messages.push("Custom supporting graphics or animated elements duration should be reviewed with the video practice lead before the SOW is finalized.");
   }
@@ -1448,27 +1612,47 @@ function buildFlags() {
 }
 
 function updateOutput() {
+  syncSocialMotionDuration();
   const tier = getTier();
   const config = pathConfigs[pathSelect.value];
   const flagMessages = buildFlags();
+
+  if (getValue("liveCapture") !== "no") {
+    generatedMarkdown = cleanGeneratedOutput([
+      "## Internal Custom Scoping Required",
+      "",
+      "This project requires custom scoping with the video practice lead before the SOW is finalized.",
+      "",
+      "V1 of the Video Scope Builder does not support live capture or on-site filming. Do not use the generated scope output until this work has been custom scoped.",
+    ].join("\n"));
+    renderMarkdown(generatedMarkdown);
+    motionDurationGroup.classList.toggle("hidden", !shouldShowMotionDuration());
+    flags.innerHTML = flagMessages.map((message) => `<div class="flag">${message}</div>`).join("");
+    tierRecommendation.textContent =
+      tierSelect.value === "not-sure"
+        ? `Recommended preset based on these answers: ${tier.charAt(0).toUpperCase() + tier.slice(1)}.`
+        : "";
+    return;
+  }
+
   const sections = [
-    "### Video Scope",
+    "## Video Scope",
     "",
     `2A will provide ${config.label} support, including:`,
     "",
-    buildScopeBullets(tier).map((item) => `- ${cleanBulletText(item)}`).join("\n"),
+    formatVideoScopeBulletsByPhase(pathSelect.value, buildScopeBullets(tier)),
     "",
-    lineList("### Final deliverables include", buildDeliverables()),
+    formatSowSection("Final deliverables include", buildDeliverables()),
     "",
-    lineList("### Client Responsibilities", buildResponsibilities()),
+    formatSowSection("Client Responsibilities", buildResponsibilities(), "Client will:"),
     "",
-    lineList("### Assumptions", buildAssumptions(tier)),
+    formatSowSection("Assumptions", buildAssumptions(tier)),
     "",
-    lineList("### Exclusions", buildExclusions(tier)),
+    formatSowSection("Exclusions", buildExclusions(tier), "Scope excludes:"),
   ];
 
   if (flagMessages.length) {
-    sections.push("", "### Internal Note", "", "This project includes elements that require custom scoping with the video practice lead before the SOW is finalized.");
+    sections.push("", formatSowSection("Internal Note", flagMessages));
   }
 
   generatedMarkdown = cleanGeneratedOutput(sections.filter((section) => section !== "").join("\n"));
@@ -1506,11 +1690,11 @@ async function copyOutput() {
 
 pathSelect.addEventListener("change", () => {
   brandVisualApproachTouched = false;
-  renderQuestions();
+  renderQuestions(true);
 });
 tierSelect.addEventListener("change", () => {
+  renderQuestions(true);
   if (pathSelect.value === "brand-story") {
-    renderQuestions();
     if (!brandVisualApproachTouched) {
       applyBrandStoryTierDefaults();
       updateOutput();
