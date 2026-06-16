@@ -446,6 +446,10 @@ function applyBrandStoryTierDefaults() {
 }
 
 function shouldRenderQuestion(question, previousState) {
+  if (pathSelect.value === "product-showcase" && getTier() === "simple" && ["uiAnimation", "voiceover"].includes(question.id)) {
+    return false;
+  }
+
   if (pathSelect.value !== "webinar") return true;
 
   const webinarSupport = previousState.webinarSupport || ["deck-design"];
@@ -670,7 +674,7 @@ function categorizeScopeBullet(path, bullet) {
   if (
     (path === "podcast" && (text.includes("remote recording") || text.startsWith("capture audio"))) ||
     (path === "customer-evidence" && (text.includes("schedule remote video capture") || text.includes("remote customer interview"))) ||
-    (path === "product-showcase" && text.includes("capture approved product screens")) ||
+    (path === "product-showcase" && (text.includes("capture approved product screens") || text.includes("remote product demo capture"))) ||
     (path === "webinar" && (text.includes("client will provide the webinar recording") || text.includes("client will provide the final webinar recording")))
   ) {
     return "production";
@@ -700,8 +704,11 @@ function categorizeScopeBullet(path, bullet) {
 }
 
 function formatVideoScopeBulletsByPhase(path, bullets) {
+  const closingBullet = "Package and deliver final files.";
+  const finalBullets = [...bullets, closingBullet];
+
   if (!shouldGroupVideoScopeByPhase(path)) {
-    return bullets.map((bullet) => `- ${cleanBulletText(bullet)}`).join("\n");
+    return finalBullets.map((bullet) => `- ${cleanBulletText(bullet)}`).join("\n");
   }
 
   const openingBullets = [];
@@ -731,6 +738,8 @@ function formatVideoScopeBulletsByPhase(path, bullets) {
     if (!phaseBullets[key].length) return;
     sections.push("", `**${label}**`, "", phaseBullets[key].map((bullet) => `- ${bullet}`).join("\n"));
   });
+
+  sections.push("", `- ${closingBullet}`);
 
   return sections.join("\n");
 }
@@ -1058,6 +1067,28 @@ function buildCustomerEvidenceScopeBullets(tier) {
   return bullets;
 }
 
+function buildProductShowcaseSimpleScopeBullets() {
+  const productAssets = getSelectedText("productAssets");
+  const bullets = [];
+
+  if (productAssets === "2A captures product screens") {
+    bullets.push("Conduct one remote product demo capture session to record the scoped product flow - scope includes one 30-minute remote capture session.");
+    bullets.push(`Edit the captured product demo footage to showcase the scoped product flow; review, revise, and finalize - scope includes up to ${formatCount(tierDefaults.simple.editRounds, "review round")}.`);
+  } else if (productAssets === "Client provides UI assets") {
+    bullets.push(`Use client-provided product demo footage to showcase the scoped product flow; review, revise, and finalize - scope includes up to ${formatCount(tierDefaults.simple.editRounds, "review round")}.`);
+  } else {
+    bullets.push("Confirm whether client-provided product demo footage or remote product demo capture will be used before production begins.");
+    bullets.push(`Edit product demo footage to showcase the scoped product flow; review, revise, and finalize - scope includes up to ${formatCount(tierDefaults.simple.editRounds, "review round")}.`);
+  }
+
+  if (getValue("supportingGraphics")) {
+    bullets.push("Add light supporting graphics and text on screen, as applicable.");
+  }
+
+  bullets.push("Add stock music, if applicable.");
+  return bullets;
+}
+
 function buildScopeBullets(tier) {
   const path = pathSelect.value;
   const config = pathConfigs[path];
@@ -1066,6 +1097,8 @@ function buildScopeBullets(tier) {
 
   if (path === "brand-story") {
     bullets.push(...buildBrandStoryScopeBullets(tier));
+  } else if (path === "product-showcase" && tier === "simple") {
+    bullets.push(...buildProductShowcaseSimpleScopeBullets());
   } else if (path === "customer-evidence") {
     bullets.push(...buildCustomerEvidenceScopeBullets(tier));
   } else if (config.narrative) {
