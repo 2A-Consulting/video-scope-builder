@@ -1135,7 +1135,7 @@ function buildProductShowcaseScopeBullets(tier) {
     bullets.push(`Edit approved product footage or screen recordings into a product showcase clip; ${formatProductReviewClause("productVideoReviewSequence")}.`);
     bullets.push("Add light polish and timing adjustments.");
   } else if (editDepth === "Produced edit with custom graphics / heavier design lift") {
-    bullets.push(`Create a produced product showcase video with custom graphics and a heavier design lift using approved product materials, approved style frames/storyboards as applicable, and visual direction; ${formatProductReviewClause("productVideoReviewSequence")}.`);
+    bullets.push(`Edit approved product materials, footage, script/talking points, and completed graphics/animation into the final product showcase video; ${formatProductReviewClause("productVideoReviewSequence")}.`);
   } else {
     bullets.push(`Create a produced product showcase video using approved product materials, script/talking points, product footage, and supporting visual elements; ${formatProductReviewClause("productVideoReviewSequence")}.`);
   }
