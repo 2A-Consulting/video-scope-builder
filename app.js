@@ -1111,7 +1111,7 @@ function buildProductShowcaseScopeBullets(tier) {
     bullets.push("Use client-provided final script or talking points to guide the product showcase edit.");
   }
 
-  if (hasClientAssets) {
+  if (hasClientAssets && !hasCustomAnimation) {
     bullets.push("Use client-provided product footage, screen recordings, screenshots, UI assets, and approved product materials to support the product showcase video.");
   }
 
@@ -1126,7 +1126,7 @@ function buildProductShowcaseScopeBullets(tier) {
   }
 
   if (hasCustomAnimation) {
-    bullets.push(`Design style frames to align on the visual direction for custom animated graphics; ${formatProductReviewClause("productDesignReviewSequence")}.`);
+    bullets.push(`Using client-provided design assets and approved product materials, design style frames to align on the visual direction for custom animated graphics; ${formatProductReviewClause("productDesignReviewSequence")}.`);
     bullets.push(`Create storyboards for scenes using custom animated graphics; ${formatProductReviewClause("productDesignReviewSequence")}.`);
     bullets.push(`Animate approved custom graphics using approved product UI, client-provided resources, and approved visual direction; ${formatProductReviewClause("productAnimationReviewSequence")}.`);
   }
