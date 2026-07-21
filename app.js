@@ -65,29 +65,166 @@ const pathConfigs = {
         options: ["30-60 seconds", "60-90 seconds", "2-3 minutes", "Custom"],
       },
       {
-        id: "productAssets",
-        label: "Product materials",
-        type: "select",
-        options: ["Client provides UI assets", "2A captures product screens", "Not sure"],
+        id: "productSourceMaterials",
+        label: "What product source materials will the video use? Check all that apply.",
+        type: "checkboxGroup",
+        options: [
+          "Client-provided footage / screen recordings / UI assets",
+          "2A records product walkthrough",
+          "Custom animated product visuals from approved references",
+          "Not sure / source materials unclear",
+        ],
       },
       {
-        id: "uiAnimation",
-        label: "Product UI animation",
+        id: "productScriptSupport",
+        label: "What script or story support is included?",
         type: "select",
-        options: ["None", "Light UI motion", "Moderate UI motion", "Not sure"],
+        options: [
+          "No script support; client provides final script / talking points",
+          "2A copy edits client-provided script / talking points",
+          "2A drafts net-new script / talking points",
+          "Not sure",
+        ],
+      },
+      {
+        id: "productWalkthroughRecording",
+        label: "Is 2A recording a product walkthrough or SME?",
+        type: "select",
+        options: [
+          "No recording; use client-provided footage/assets",
+          "Record SME/talking head",
+          "Record product walkthrough with SME guiding recording, not included in final video",
+        ],
+      },
+      {
+        id: "productRecordingSessionCount",
+        label: "Recording session count",
+        type: "select",
+        options: ["1", "2", "Custom"],
+      },
+      {
+        id: "productRecordingSessionLength",
+        label: "Recording session length",
+        type: "select",
+        options: ["Up to 30 minutes", "Up to 60 minutes", "Custom"],
+      },
+      {
+        id: "productEditDepth",
+        label: "What level of edit/assembly is included?",
+        type: "select",
+        options: [
+          "Simple stitch/polish of approved product footage",
+          "Produced product demo edit",
+          "Produced edit with custom graphics / heavier design lift",
+        ],
+      },
+      {
+        id: "productMotionGraphicsDepth",
+        label: "What motion or supporting graphics are included?",
+        type: "select",
+        options: [
+          "None",
+          "Light UI callouts / highlights",
+          "Supporting UI motion using existing assets",
+          "Custom animated graphics from approved product references",
+        ],
       },
       {
         id: "voiceover",
         label: "Voiceover",
         type: "select",
-        options: ["Professional voiceover", "Client-provided voiceover", "AI voiceover", "None"],
+        options: ["None", "SME walkthrough audio / narration", "Client-provided voiceover", "Approved AI voiceover", "Professional voiceover sourced/recorded by 2A"],
         value: "None",
       },
       {
-        id: "supportingGraphics",
-        label: "Supporting graphics or branded elements",
+        id: "musicSoundSupport",
+        label: "What music or sound support is included?",
+        type: "select",
+        options: ["None", "Music only", "Music and sound effects / audio mix"],
+        value: "Music only",
+      },
+      {
+        id: "productMainFormats",
+        label: "Main video format(s)",
+        type: "checkboxGroup",
+        options: ["MOV", "MP4"],
+      },
+      {
+        id: "productMainAspectRatios",
+        label: "Main video aspect ratio(s)",
+        type: "checkboxGroup",
+        options: ["16:9", "9:16", "1:1", "4:5"],
+      },
+      {
+        id: "productThumbnail",
+        label: "Include thumbnail(s)",
         type: "checkbox",
         checked: true,
+      },
+      {
+        id: "productDescriptiveAudio",
+        label: "Include descriptive audio",
+        type: "checkbox",
+        checked: false,
+      },
+      {
+        id: "productCutdownCount",
+        label: "How many derivative cutdowns from the approved edit?",
+        type: "number",
+        min: 0,
+        value: 0,
+      },
+      {
+        id: "productCutdownLength",
+        label: "Approximate cutdown length",
+        type: "select",
+        options: ["15 seconds", "30 seconds", "60 seconds", "Custom"],
+      },
+      {
+        id: "productCutdownFormats",
+        label: "Cutdown format(s)",
+        type: "checkboxGroup",
+        options: ["MOV", "MP4"],
+      },
+      {
+        id: "productCutdownAspectRatios",
+        label: "Cutdown aspect ratio(s)",
+        type: "checkboxGroup",
+        options: ["16:9", "9:16", "1:1", "4:5"],
+      },
+      {
+        id: "productScriptReviewSequence",
+        label: "Script/talking point review sequence",
+        type: "select",
+        options: ["V1, V2, and final", "V1 and final"],
+      },
+      {
+        id: "productDesignReviewSequence",
+        label: "Design review sequence",
+        type: "select",
+        options: ["V1 and final", "V1, V2, and final"],
+      },
+      {
+        id: "productAnimationReviewSequence",
+        label: "Animation review sequence",
+        type: "select",
+        options: ["V1 and final", "V1, V2, and final"],
+      },
+      {
+        id: "productVideoReviewSequence",
+        label: "Video edit review sequence",
+        type: "select",
+        options: ["V1, V2, and final", "V1 and final"],
+      },
+      {
+        id: "productApprovalRisk",
+        label: "Approval or readiness flags",
+        type: "checkboxGroup",
+        options: [
+          "Legal/compliance/security feedback not included in review rounds",
+          "Product feature/UI not ready to scope",
+          "Product simulation / unapproved product behavior requested",
+        ],
       },
     ],
   },
@@ -398,6 +535,14 @@ function getDefaultCheckedOptions(question) {
     return ["Deck design"];
   }
 
+  if (pathSelect.value === "product-showcase") {
+    if (question.id === "productSourceMaterials") return ["Client-provided footage / screen recordings / UI assets"];
+    if (question.id === "productMainFormats") return ["MP4"];
+    if (question.id === "productMainAspectRatios") return ["16:9"];
+    if (question.id === "productCutdownFormats") return ["MP4"];
+    if (question.id === "productCutdownAspectRatios") return ["9:16"];
+  }
+
   return question.checkedOptions || [];
 }
 
@@ -405,6 +550,27 @@ function getDefaultSelectValue(question) {
   if (pathSelect.value === "brand-story" && question.id === "visualPlanning") {
     if (tierSelect.value === "simple") return "edit-led-only";
     return "style-frames-and-storyboard";
+  }
+
+  if (pathSelect.value === "product-showcase") {
+    if (question.id === "productScriptSupport") {
+      if (tierSelect.value === "simple") return "no-script-support-client-provides-final-script-talking-points";
+      return "2a-drafts-net-new-script-talking-points";
+    }
+    if (question.id === "productEditDepth") {
+      if (tierSelect.value === "simple") return "simple-stitch-polish-of-approved-product-footage";
+      if (tierSelect.value === "premium") return "produced-edit-with-custom-graphics-heavier-design-lift";
+      return "produced-product-demo-edit";
+    }
+    if (question.id === "productMotionGraphicsDepth") {
+      if (tierSelect.value === "simple") return "light-ui-callouts-highlights";
+      if (tierSelect.value === "premium") return "custom-animated-graphics-from-approved-product-references";
+      return "supporting-ui-motion-using-existing-assets";
+    }
+    if (question.id === "productDesignReviewSequence") return "v1-and-final";
+    if (question.id === "productAnimationReviewSequence") return "v1-and-final";
+    if (question.id === "productVideoReviewSequence") return "v1-v2-and-final";
+    if (question.id === "productScriptReviewSequence") return "v1-v2-and-final";
   }
 
   return question.value ? normalizeId(question.value) : "";
@@ -446,8 +612,29 @@ function applyBrandStoryTierDefaults() {
 }
 
 function shouldRenderQuestion(question, previousState) {
-  if (pathSelect.value === "product-showcase" && getTier() === "simple" && ["uiAnimation", "voiceover"].includes(question.id)) {
-    return false;
+  if (pathSelect.value === "product-showcase") {
+    const sourceMaterials = previousState.productSourceMaterials || getDefaultCheckedOptions({ id: "productSourceMaterials" }).map(normalizeId);
+    const recording = previousState.productWalkthroughRecording || getDefaultSelectValue({ id: "productWalkthroughRecording" });
+    const cutdownCount = Number(previousState.productCutdownCount ?? 0);
+    const motionDepth = previousState.productMotionGraphicsDepth || getDefaultSelectValue({ id: "productMotionGraphicsDepth" });
+    const scriptSupport = previousState.productScriptSupport || getDefaultSelectValue({ id: "productScriptSupport" });
+    const hasRecording = recording && recording !== "no-recording-use-client-provided-footage-assets";
+    const hasCustomAnimation =
+      sourceMaterials.includes("custom-animated-product-visuals-from-approved-references") ||
+      motionDepth === "custom-animated-graphics-from-approved-product-references";
+
+    if (["productRecordingSessionCount", "productRecordingSessionLength"].includes(question.id)) {
+      return hasRecording || sourceMaterials.includes("2a-records-product-walkthrough");
+    }
+    if (["productCutdownLength", "productCutdownFormats", "productCutdownAspectRatios"].includes(question.id)) {
+      return cutdownCount > 0;
+    }
+    if (["productDesignReviewSequence", "productAnimationReviewSequence"].includes(question.id)) {
+      return hasCustomAnimation;
+    }
+    if (question.id === "productScriptReviewSequence") {
+      return ["2a-copy-edits-client-provided-script-talking-points", "2a-drafts-net-new-script-talking-points"].includes(scriptSupport);
+    }
   }
 
   if (pathSelect.value !== "webinar") return true;
@@ -619,6 +806,19 @@ function getTier() {
 function recommendTier() {
   const path = pathSelect.value;
   if (getValue("liveCapture") !== "no") return "premium";
+  if (path === "product-showcase") {
+    if (isProductSourceUnclear() || productHasRisk("Product simulation / unapproved product behavior requested") || productHasRisk("Product feature/UI not ready to scope")) return "premium";
+    if (hasProductCustomAnimation()) return "premium";
+    if (
+      getSelectedText("productEditDepth") === "Produced product demo edit" ||
+      getSelectedText("productScriptSupport").includes("2A") ||
+      hasProductRecording() ||
+      getSelectedText("productMotionGraphicsDepth") === "Supporting UI motion using existing assets"
+    ) {
+      return "standard";
+    }
+    return "simple";
+  }
   if (path === "webinar" && (hasWebinarRecordingEdit() || hasWebinarCutdowns())) return "premium";
   if (path === "webinar" && (hasWebinarSupport("Outline/chiclets") || hasWebinarSupport("Slide-by-slide content") || hasWebinarDeckSupport())) return "standard";
   if (path === "social-clips" && Number(getValue("clipCount", 0)) > 4) return "premium";
@@ -632,6 +832,7 @@ function shouldShowMotionDuration() {
   const path = pathSelect.value;
   if (path === "social-clips") return true;
   if (path === "podcast") return tierSelect.value === "premium";
+  if (path === "product-showcase") return false;
   if (path === "brand-story") {
     const hasEditLedMotion = hasCheckedOption("brandVisualApproach", "Animated graphics / text on screen");
     const hasCustomAnimation = hasCheckedOption("brandVisualApproach", "Custom illustration") || hasCheckedOption("brandVisualApproach", "Custom animation");
@@ -655,7 +856,7 @@ function formatSowSection(title, items, intro = "") {
 function shouldGroupVideoScopeByPhase(path) {
   if (path === "podcast") return true;
   if (path === "customer-evidence") return getSelectedText("participantFootage") === "Remote recording support";
-  if (path === "product-showcase") return getSelectedText("productAssets") === "2A captures product screens";
+  if (path === "product-showcase") return hasProductRecording();
   if (path === "webinar") return hasWebinarRecordingEdit() || hasWebinarCutdowns();
   return false;
 }
@@ -663,7 +864,7 @@ function shouldGroupVideoScopeByPhase(path) {
 function getRecordingPhaseLabel(path) {
   if (path === "podcast") return "Remote recording";
   if (path === "customer-evidence") return "Remote customer interview recording";
-  if (path === "product-showcase") return "Product screen capture";
+  if (path === "product-showcase") return "Product walkthrough recording";
   if (path === "webinar") return "Client-conducted webinar recording handoff";
   return "Production / Recording";
 }
@@ -674,7 +875,7 @@ function categorizeScopeBullet(path, bullet) {
   if (
     (path === "podcast" && (text.includes("remote recording") || text.startsWith("capture audio"))) ||
     (path === "customer-evidence" && (text.includes("schedule remote video capture") || text.includes("remote customer interview"))) ||
-    (path === "product-showcase" && (text.includes("capture approved product screens") || text.includes("remote product demo capture"))) ||
+    (path === "product-showcase" && (text.includes("remote product walkthrough recording") || text.includes("remote recording session"))) ||
     (path === "webinar" && (text.includes("client will provide the webinar recording") || text.includes("client will provide the final webinar recording")))
   ) {
     return "production";
@@ -686,6 +887,9 @@ function categorizeScopeBullet(path, bullet) {
     text.startsWith("review video footage and map content") ||
     text.startsWith("add ") ||
     text.startsWith("animate ") ||
+    text.startsWith("create a produced product showcase") ||
+    text.startsWith("edit approved product footage") ||
+    text.startsWith("incorporate sme") ||
     text.startsWith("create podcast thumbnail") ||
     text.startsWith("create standardized podcast assets") ||
     text.startsWith("create supporting animated") ||
@@ -834,6 +1038,158 @@ function syncSocialMotionDuration() {
   } else if (motionSupport === "Text on screen and captions") {
     motionDurationSelect.value = "none";
   }
+}
+
+function getProductReviewSequence(id, fallback = "V1, V2, and final") {
+  return getSelectedText(id, fallback);
+}
+
+function productHasSource(label) {
+  return hasCheckedOption("productSourceMaterials", label);
+}
+
+function productHasRisk(label) {
+  return hasCheckedOption("productApprovalRisk", label);
+}
+
+function isProductSourceUnclear() {
+  return productHasSource("Not sure / source materials unclear");
+}
+
+function hasProductCustomAnimation() {
+  return (
+    productHasSource("Custom animated product visuals from approved references") ||
+    getSelectedText("productMotionGraphicsDepth") === "Custom animated graphics from approved product references" ||
+    getSelectedText("productEditDepth") === "Produced edit with custom graphics / heavier design lift"
+  );
+}
+
+function hasProductRecording() {
+  return (
+    productHasSource("2A records product walkthrough") ||
+    getSelectedText("productWalkthroughRecording") !== "No recording; use client-provided footage/assets"
+  );
+}
+
+function hasProductNarrationOrAudio() {
+  return (
+    getSelectedText("voiceover") !== "None" ||
+    getSelectedText("productWalkthroughRecording") === "Record SME/talking head" ||
+    getValue("productDescriptiveAudio") === true
+  );
+}
+
+function formatProductFormatsAndRatios(formatId, ratioId) {
+  const formats = getCheckedValues(formatId).map((value) => value.toUpperCase());
+  const ratios = getCheckedValues(ratioId).map((value) => value.replace(/-/g, ":"));
+  const formatText = formats.length ? formats.join(" and ") : "MP4";
+  const ratioText = ratios.length ? ratios.join(" and ") : "16:9";
+  return `scoped format(s) ${formatText} including ${ratioText}`;
+}
+
+function formatProductReviewClause(sequenceId) {
+  return `review, revise, and finalize - scope includes ${getProductReviewSequence(sequenceId)}`;
+}
+
+function buildProductShowcaseScopeBullets(tier) {
+  const bullets = [];
+  const scriptSupport = getSelectedText("productScriptSupport");
+  const recording = getSelectedText("productWalkthroughRecording");
+  const editDepth = getSelectedText("productEditDepth");
+  const motionDepth = getSelectedText("productMotionGraphicsDepth");
+  const voiceover = getSelectedText("voiceover");
+  const music = getSelectedText("musicSoundSupport");
+  const hasClientAssets = productHasSource("Client-provided footage / screen recordings / UI assets");
+  const has2ARecording = productHasSource("2A records product walkthrough") || recording !== "No recording; use client-provided footage/assets";
+  const hasCustomAnimation = hasProductCustomAnimation();
+
+  if (scriptSupport === "2A copy edits client-provided script / talking points") {
+    bullets.push(`Copy edit client-provided product script or talking points for clarity, flow, and video readiness; ${formatProductReviewClause("productScriptReviewSequence")}.`);
+  } else if (scriptSupport === "2A drafts net-new script / talking points") {
+    bullets.push(`Draft product video script or talking points based on approved product inputs and client direction; ${formatProductReviewClause("productScriptReviewSequence")}.`);
+  } else if (scriptSupport === "No script support; client provides final script / talking points") {
+    bullets.push("Use client-provided final script or talking points to guide the product showcase edit.");
+  }
+
+  if (hasClientAssets) {
+    bullets.push("Use client-provided product footage, screen recordings, screenshots, UI assets, and approved product materials to support the product showcase video.");
+  }
+
+  if (has2ARecording) {
+    const sessionCount = getSelectedText("productRecordingSessionCount", "1").toLowerCase();
+    const sessionLength = getSelectedText("productRecordingSessionLength", "Up to 30 minutes").toLowerCase();
+    if (recording === "Record SME/talking head") {
+      bullets.push(`Conduct remote recording session(s) with client subject matter expert(s) to capture talking-head footage and/or narration and the approved product walkthrough, as applicable - scope includes up to ${sessionCount} session(s), ${sessionLength} each.`);
+    } else {
+      bullets.push(`Conduct remote product walkthrough recording session(s) to capture the approved product flow - scope includes up to ${sessionCount} session(s), ${sessionLength} each.`);
+    }
+  }
+
+  if (hasCustomAnimation) {
+    bullets.push(`Design style frames to align on the visual direction for custom animated graphics; ${formatProductReviewClause("productDesignReviewSequence")}.`);
+    bullets.push(`Create storyboards for scenes using custom animated graphics; ${formatProductReviewClause("productDesignReviewSequence")}.`);
+    bullets.push(`Animate approved custom graphics using approved product UI, client-provided resources, and approved visual direction; ${formatProductReviewClause("productAnimationReviewSequence")}.`);
+  }
+
+  if (editDepth === "Simple stitch/polish of approved product footage") {
+    bullets.push(`Edit approved product footage or screen recordings into a product showcase clip; ${formatProductReviewClause("productVideoReviewSequence")}.`);
+    bullets.push("Add light polish and timing adjustments.");
+  } else if (editDepth === "Produced edit with custom graphics / heavier design lift") {
+    bullets.push(`Create a produced product showcase video with custom graphics and a heavier design lift using approved product materials, approved style frames/storyboards as applicable, and visual direction; ${formatProductReviewClause("productVideoReviewSequence")}.`);
+  } else {
+    bullets.push(`Create a produced product showcase video using approved product materials, script/talking points, product footage, and supporting visual elements; ${formatProductReviewClause("productVideoReviewSequence")}.`);
+  }
+
+  if (!hasCustomAnimation) {
+    if (motionDepth === "Light UI callouts / highlights") {
+      bullets.push("Add light UI callouts, text on screen, highlights, and/or simple branded elements to support the approved product footage or product story.");
+    } else if (motionDepth === "Supporting UI motion using existing assets") {
+      bullets.push("Add supporting UI motion, visual callouts, transitions, and branded elements using approved product materials and existing client-provided assets.");
+    }
+  }
+
+  if (voiceover === "SME walkthrough audio / narration") {
+    bullets.push("Incorporate SME walkthrough audio and/or narration into the final video, as applicable.");
+  } else if (voiceover === "Client-provided voiceover") {
+    bullets.push("Incorporate client-provided voiceover into the final video, as applicable.");
+  } else if (voiceover === "Approved AI voiceover") {
+    bullets.push("Create and incorporate approved AI voiceover into the final video, based on the approved script and client-approved voice style/tone.");
+  } else if (voiceover === "Professional voiceover sourced/recorded by 2A") {
+    bullets.push("Source and record professional voiceover based on the approved script, then incorporate approved voiceover into the final video.");
+  }
+
+  if (music === "Music only") {
+    bullets.push("Add music, as applicable, using licensed or client-approved tracks.");
+  } else if (music === "Music and sound effects / audio mix") {
+    bullets.push("Add music, sound effects, and audio mix, as applicable, using licensed or client-approved tracks.");
+  }
+
+  return bullets;
+}
+
+function buildProductShowcaseDeliverables() {
+  const deliverables = [];
+  const videoCount = getValue("primaryVideoCount", 1);
+  deliverables.push(`${formatCount(videoCount, "final video file")}, ${formatApproximateLength(getSelectedText("videoLength"), videoCount)}, ${formatProductFormatsAndRatios("productMainFormats", "productMainAspectRatios")}`);
+
+  if (hasProductNarrationOrAudio()) {
+    deliverables.push("Text/caption file(s)");
+  }
+
+  if (getValue("productThumbnail") === true) {
+    deliverables.push("Thumbnail(s)");
+  }
+
+  if (getValue("productDescriptiveAudio") === true) {
+    deliverables.push("Descriptive audio");
+  }
+
+  const cutdownCount = Number(getValue("productCutdownCount", 0)) || 0;
+  if (cutdownCount > 0) {
+    deliverables.push(`${formatCount(cutdownCount, "cutdown")} from the approved product showcase edit, approximately ${getSelectedText("productCutdownLength")} each, ${formatProductFormatsAndRatios("productCutdownFormats", "productCutdownAspectRatios")}`);
+  }
+
+  return deliverables;
 }
 
 function getPodcastReviewRounds(tier) {
@@ -1097,8 +1453,8 @@ function buildScopeBullets(tier) {
 
   if (path === "brand-story") {
     bullets.push(...buildBrandStoryScopeBullets(tier));
-  } else if (path === "product-showcase" && tier === "simple") {
-    bullets.push(...buildProductShowcaseSimpleScopeBullets());
+  } else if (path === "product-showcase") {
+    bullets.push(...buildProductShowcaseScopeBullets(tier));
   } else if (path === "customer-evidence") {
     bullets.push(...buildCustomerEvidenceScopeBullets(tier));
   } else if (config.narrative) {
@@ -1188,7 +1544,9 @@ function buildDeliverables() {
   const path = pathSelect.value;
   const deliverables = [];
 
-  if (pathConfigs[path].narrative) {
+  if (path === "product-showcase") {
+    deliverables.push(...buildProductShowcaseDeliverables());
+  } else if (pathConfigs[path].narrative) {
     const videoCount = getValue("primaryVideoCount", 1);
     deliverables.push(`${formatCount(videoCount, "final video file")}, ${formatApproximateLength(getSelectedText("videoLength"), videoCount)}`);
     deliverables.push(path === "customer-evidence" ? "Text/caption file(s), if applicable" : "Text/caption file(s)");
@@ -1260,7 +1618,7 @@ function buildDeliverables() {
     }
   }
 
-  if (getValue("descriptiveAudio") === "yes" && supportsDescriptiveAudio(path)) {
+  if (path !== "product-showcase" && getValue("descriptiveAudio") === "yes" && supportsDescriptiveAudio(path)) {
     deliverables.push("Descriptive audio");
   }
 
@@ -1313,18 +1671,27 @@ function buildResponsibilities() {
   }
 
   if (path === "product-showcase") {
-    const productAssets = getSelectedText("productAssets");
-    const responsibilities = [];
-    if (productAssets === "Client provides UI assets") {
-      responsibilities.push("Provide product UI assets, screenshots, screen recordings, product copy, feature documentation, and approved product materials needed for the scoped video.");
-    } else if (productAssets === "2A captures product screens") {
-      responsibilities.push("Provide product access, capture guidance, approved demo paths, and source materials needed for 2A to capture product screens.");
-    } else {
-      responsibilities.push("Confirm available product materials, product UI assets, screenshots, recordings, documentation, and access needs before production begins.");
+    const responsibilities = [
+      "Provide approved product direction, source materials, and product contacts needed for the scoped video.",
+    ];
+    if (productHasSource("Client-provided footage / screen recordings / UI assets")) {
+      responsibilities.push("Provide approved product footage, screen recordings, screenshots, UI assets, product copy, feature documentation, and demo path guidance needed for the scoped video.");
     }
-    responsibilities.push("Validate technical, product, legal, customer, and compliance accuracy, including product claims, UI details, and feature/value proof points.");
+    if (hasProductRecording()) {
+      responsibilities.push("Provide product access, approved demo path, and a subject matter expert who can walk through the product demo during recording.");
+    }
+    if (getSelectedText("voiceover") === "Client-provided voiceover") {
+      responsibilities.push("Provide final approved voiceover files, such as MP3, in a usable format before edit lock.");
+    }
+    if (getSelectedText("voiceover") === "Approved AI voiceover") {
+      responsibilities.push("Confirm AI voiceover usage approval, preferred AI voiceover style/tone, pronunciation guidance, and any legal or brand requirements before production begins.");
+    }
+    if (getSelectedText("voiceover") === "Professional voiceover sourced/recorded by 2A") {
+      responsibilities.push("Review and approve voiceover script, review professional voiceover talent options, select preferred talent, provide pronunciation guidance, and approve final audio before delivery.");
+    }
+    responsibilities.push("Validate product accuracy, including product claims, UI details, feature names, and technical details.");
     responsibilities.push("Provide consolidated feedback and approvals within the agreed review timeline.");
-    responsibilities.push("Confirm final delivery specifications, including file format, aspect ratio, caption requirements, thumbnail requirements, and whether descriptive audio is required.");
+    responsibilities.push("Confirm final delivery specifications, including file format, aspect ratio, caption requirements, thumbnail requirements, and descriptive audio requirements.");
     return responsibilities;
   }
 
@@ -1457,36 +1824,39 @@ function buildAssumptions(tier) {
   }
 
   if (path === "product-showcase") {
-    const productAssets = getSelectedText("productAssets");
-    const uiAnimation = getSelectedText("uiAnimation");
     const productAssumptions = [
-      productAssets === "Not sure"
-        ? "Final scope assumes product materials, access needs, and source assets are confirmed before production begins."
-        : "Client will provide relevant product materials before work begins.",
+      "Client will provide relevant product materials before work begins.",
+      "Client feedback will be consolidated before being shared with 2A.",
+      "Client is responsible for validating technical, product, legal, customer, and compliance accuracy.",
     ];
 
-    if (productAssets === "2A captures product screens") {
-      productAssumptions.push("Product access, approved demo paths, and screen-capture requirements will be confirmed before product screen capture begins.");
-    } else if (productAssets === "Client provides UI assets") {
+    if (productHasSource("Client-provided footage / screen recordings / UI assets")) {
       productAssumptions.push("Client-provided product assets and source materials are approved for use in the final deliverables.");
     }
 
-    if (uiAnimation === "Not sure") {
-      productAssumptions.push("Final scope assumes product UI animation depth and supporting motion requirements are confirmed before production begins.");
-    } else if (uiAnimation !== "None") {
-      productAssumptions.push("Product UI animation will be based on approved product materials, screen captures, or visual direction.");
+    if (hasProductRecording()) {
+      productAssumptions.push("Product access, approved demo path, and screen-capture requirements will be confirmed before product recording begins.");
     }
 
-    productAssumptions.push("Client feedback will be consolidated before being shared with 2A.");
-    productAssumptions.push("Final product story, messaging, and demo flow approval is required before edit or animation work begins.");
-    productAssumptions.push("Client is responsible for validating technical, product, legal, customer, and compliance accuracy.");
-
-    if (shouldShowMotionDuration() && motionDurationSelect.value !== "none" && motionDurationSelect.value !== "custom" && uiAnimation !== "Not sure") {
-      productAssumptions.push("Supporting graphics and animated elements are limited to the scoped duration listed above.");
+    if (["2A copy edits client-provided script / talking points", "2A drafts net-new script / talking points"].includes(getSelectedText("productScriptSupport"))) {
+      productAssumptions.push("Final script or talking point approval is required before edit, animation, or voiceover work begins.");
     }
 
-    if (getValue("descriptiveAudio") === "not-sure" && supportsDescriptiveAudio(path)) {
-      productAssumptions.push("Client to confirm whether descriptive audio is required.");
+    if (hasProductCustomAnimation()) {
+      productAssumptions.push("Approved style frames and storyboards will guide custom animated graphics.");
+      productAssumptions.push("Custom animated graphics will be based on approved product references, client-provided resources, and approved visual direction.");
+    }
+
+    if (getSelectedText("voiceover") === "Approved AI voiceover") {
+      productAssumptions.push("AI voiceover use is subject to client approval and any applicable legal, brand, or platform requirements.");
+    }
+
+    if (Number(getValue("productCutdownCount", 0)) > 0) {
+      productAssumptions.push("Cutdowns will be created from the approved product showcase edit.");
+    }
+
+    if (productHasRisk("Legal/compliance/security feedback not included in review rounds")) {
+      productAssumptions.push("Client feedback will be consolidated before being shared with 2A, including any required product, legal, compliance, security, or customer feedback.");
     }
 
     productAssumptions.push("Additional formats, versions, or revisions may impact scope, timeline, or budget.");
@@ -1569,6 +1939,40 @@ function buildExclusions(tier) {
     ].slice(0, tierDefaults[tier].exclusionLimit);
   }
 
+  if (path === "product-showcase") {
+    const exclusions = [
+      "Live capture or on-site filming",
+      "Production crew, travel, permits, and location coordination",
+      "Product design, UX design, product strategy, and recreating product UI from scratch",
+      "Product claim substantiation, legal review, compliance review, security review, or technical validation by 2A",
+      "Additional formats, aspect ratios, cutdowns, versions, or derivative assets not listed in deliverables",
+    ];
+
+    if (hasProductRecording()) {
+      exclusions.push("Additional recording sessions or product flows beyond those listed in scope");
+    }
+
+    if (hasProductCustomAnimation()) {
+      exclusions.push("Product simulation, product prototyping, or inventing product behavior unless separately scoped");
+    }
+
+    if (getSelectedText("voiceover") === "Client-provided voiceover") {
+      exclusions.push("Voiceover recording, talent sourcing, script rewriting, audio repair, or alternate reads unless separately scoped");
+    }
+
+    if (getSelectedText("voiceover") === "Approved AI voiceover") {
+      exclusions.push("Voice cloning, custom voice model creation, legal review, usage clearance, or switching from AI voiceover to professional voiceover unless separately scoped");
+    }
+
+    if (getSelectedText("voiceover") === "Professional voiceover sourced/recorded by 2A") {
+      exclusions.push("Additional voiceover records, alternate reads, talent usage beyond the scoped deliverables, or custom music composition unless separately scoped");
+    }
+
+    exclusions.push("Custom music composition or advanced sound design unless separately scoped");
+    exclusions.push("Localization or translation");
+    return [...new Set(exclusions)].slice(0, tierDefaults[tier].exclusionLimit);
+  }
+
   const exclusions = [
     "Live capture or on-site filming",
     "Production crew, travel, permits, and location coordination",
@@ -1578,11 +1982,6 @@ function buildExclusions(tier) {
 
   if (path === "podcast" && !hasPodcastVideoOutput()) {
     exclusions[3] = "Additional audio formats, versions, or derivative assets not listed in deliverables";
-  }
-
-  if (path === "product-showcase") {
-    exclusions.push("Product design or UX design");
-    exclusions.push("Recreating product UI from scratch");
   }
 
   const brandHasCustomVisuals = path === "brand-story" && hasBrandStoryCustomVisuals();
@@ -1626,6 +2025,26 @@ function buildFlags() {
   if (getValue("liveCapture") !== "no") {
     messages.push("This project requires custom scoping with the video practice lead. V1 of the scope builder does not support live capture or on-site filming.");
   }
+  if (pathSelect.value === "product-showcase") {
+    if (isProductSourceUnclear()) {
+      messages.push("Product materials are required to scope this project. Confirm whether the video will use client-provided footage/assets, 2A product recording, custom animated product visuals, or a combination before generating SOW language.");
+    }
+    if (productHasRisk("Product simulation / unapproved product behavior requested")) {
+      messages.push("Product simulation or unapproved product behavior should be reviewed before SOW finalization. Do not use generated client-facing scope language for product behavior that has not been approved.");
+    }
+    if (productHasRisk("Product feature/UI not ready to scope")) {
+      messages.push("Product feature/UI readiness must be confirmed before final scope language is generated.");
+    }
+    if (getSelectedText("productScriptSupport") === "Not sure") {
+      messages.push("Script and voiceover approach must be confirmed before final SOW language is used.");
+    }
+    if (productHasRisk("Legal/compliance/security feedback not included in review rounds")) {
+      messages.push("Late legal, compliance, security, or customer feedback after final approval may require additional scope, timeline, or budget.");
+    }
+    if (getSelectedText("voiceover") === "Approved AI voiceover") {
+      messages.push("If the client later wants professional voiceover instead of AI voiceover, additional scope/cost may be required.");
+    }
+  }
   if (pathSelect.value === "podcast" && getSelectedText("podcastFormat") === "Audio only" && getSelectedText("podcastGraphics") !== "None") {
     messages.push("Podcast graphics package selections do not apply to audio-only podcast scopes.");
   }
@@ -1638,13 +2057,29 @@ function buildFlags() {
   if (pathSelect.value === "webinar" && getValue("descriptiveAudio") === "not-sure" && hasWebinarVideoOutput()) {
     messages.push("Descriptive audio requirements must be confirmed before the SOW is finalized.");
   }
-  if (getSelectedText("productAssets") === "Not sure" || getSelectedText("uiAnimation") === "Not sure" || getSelectedText("participantFootage") === "Not sure" || getSelectedText("podcastGraphics") === "Not sure") {
+  if (getSelectedText("participantFootage") === "Not sure" || getSelectedText("podcastGraphics") === "Not sure") {
     messages.push("One or more selected inputs should be reviewed before this scope is finalized.");
   }
   return messages;
 }
 
+function hasProductBlockingFlag() {
+  return (
+    pathSelect.value === "product-showcase" &&
+    (isProductSourceUnclear() ||
+      productHasRisk("Product simulation / unapproved product behavior requested") ||
+      productHasRisk("Product feature/UI not ready to scope"))
+  );
+}
+
+function syncGlobalControlVisibility() {
+  const hideGlobalDescriptiveAudio = pathSelect.value === "product-showcase";
+  document.querySelector("#descriptiveAudioLabel")?.classList.toggle("hidden", hideGlobalDescriptiveAudio);
+  document.querySelector("#descriptiveAudio")?.classList.toggle("hidden", hideGlobalDescriptiveAudio);
+}
+
 function updateOutput() {
+  syncGlobalControlVisibility();
   syncSocialMotionDuration();
   const tier = getTier();
   const config = pathConfigs[pathSelect.value];
@@ -1664,6 +2099,24 @@ function updateOutput() {
     tierRecommendation.textContent =
       tierSelect.value === "not-sure"
         ? `Recommended preset based on these answers: ${tier.charAt(0).toUpperCase() + tier.slice(1)}.`
+        : "";
+    return;
+  }
+
+  if (hasProductBlockingFlag()) {
+    generatedMarkdown = cleanGeneratedOutput([
+      "## Internal Review Required",
+      "",
+      "This Product showcase scope needs clarification before client-facing SOW language is used.",
+      "",
+      formatSowSection("Internal Note", flagMessages),
+    ].join("\n"));
+    renderMarkdown(generatedMarkdown);
+    motionDurationGroup.classList.toggle("hidden", !shouldShowMotionDuration());
+    flags.innerHTML = flagMessages.map((message) => `<div class="flag">${message}</div>`).join("");
+    tierRecommendation.textContent =
+      tierSelect.value === "not-sure"
+        ? "Recommended preset based on these answers: confirm required inputs before choosing a preset."
         : "";
     return;
   }
@@ -1740,6 +2193,12 @@ form.addEventListener("change", (event) => {
     brandVisualApproachTouched = true;
   }
   if (pathSelect.value === "webinar" && event.target?.name === "webinarSupport") {
+    renderQuestions();
+  }
+  if (
+    pathSelect.value === "product-showcase" &&
+    ["productSourceMaterials", "productWalkthroughRecording", "productCutdownCount", "productMotionGraphicsDepth", "productScriptSupport"].includes(event.target?.name)
+  ) {
     renderQuestions();
   }
 });
